@@ -219,7 +219,19 @@ module overmind::marketplace {
         @param ctx - The transaction context.
 	*/
 	public fun create_shop(recipient: address, ctx: &mut TxContext) {
+        let (shop_owner_capability, shop) = new_shop(ctx);
         
+        let id_shop = object::uid_to_inner(&shop.id);
+        let id_shop_owner_cap = object::uid_to_inner(&shop_owner_capability.id);
+
+        let shop_created = ShopCreated {
+            shop_id: id_shop,
+            shop_owner_cap_id: id_shop_owner_cap,
+        };
+
+        transfer::share_object(shop);
+        transfer::transfer(shop_owner_capability, recipient);
+        event::emit(shop_created);
 	}
 
     /*
@@ -307,6 +319,25 @@ module overmind::marketplace {
     //==============================================================================================
     // Helper functions - Add your helper functions here (if any)
     //==============================================================================================
+    public fun new_shop(ctx: &mut TxContext): (ShopOwnerCapability, Shop) {
+        let shop_owner_cap_id = object::new(ctx);
+        let shop_id = object::new(ctx);
+
+        let shop = Shop {
+            id: shop_id,
+            shop_owner_cap: object::uid_to_inner(&shop_owner_cap_id),
+            balance: balance::zero<SUI>(),
+            items: vector::empty<Item>(),
+            item_count: 0
+        };
+
+        let shop_owner_capability = ShopOwnerCapability {
+            id: shop_owner_cap_id,
+            shop: object::uid_to_inner(&shop.id)
+        };
+
+        (shop_owner_capability, shop)
+    }
 
     //==============================================================================================
     // Validation functions - Add your validation functions here (if any)
