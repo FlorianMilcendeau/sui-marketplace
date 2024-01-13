@@ -308,7 +308,48 @@ module overmind::marketplace {
         payment_coin: &mut coin::Coin<SUI>,
         ctx: &mut TxContext
     ) {
+        let item_ref = vector::borrow_mut(&mut shop.items, item_id);
 
+        validate_payment(item_ref.price, payment_coin);
+        validate_if_item_listed(item_ref.listed);
+        validate_availability_item(quantity, item_ref.available);
+
+        let b = coin::balance_mut(payment_coin);
+        let c = coin::take(b, item_ref.price * quantity, ctx);
+        balance::join(&mut shop.balance, coin::into_balance(c));
+
+        item_ref.available = item_ref.available - quantity;
+    
+        let i = 0;
+        while (i < quantity) {
+
+            let purchased_item = PurchasedItem {
+                id: object::new(ctx),
+                shop_id: object::id(shop),
+                item_id
+            };
+        
+            transfer::transfer(purchased_item, recipient);
+            i = i + 1;
+        };
+
+        let item_ref = vector::borrow_mut(&mut shop.items, item_id);
+
+        if (item_ref.available == 0) {
+            item_ref.listed = false;
+
+            event::emit(ItemUnlisted {
+                shop_id: object::id(shop),
+                item_id
+            });
+        };
+
+        event::emit(ItemPurchased {
+            shop_id: object::id(shop),
+            item_id,
+            quantity,
+            buyer: recipient    
+        });
     }
 
     /*
@@ -376,12 +417,26 @@ module overmind::marketplace {
     }
 
     public fun validate_price_item(price: u64) {
-        assert!(price != 0, EInvalidPrice);
+        assert!(price > 0, EInvalidPrice);
     }
 
     public fun validate_supply(supply: u64) {
-        assert!(supply != 0, EInvalidSupply);
+        assert!(supply > 0, EInvalidSupply);
     }
+
+    public fun validate_payment(price: u64, payment_coin: &coin::Coin<SUI>) {
+        let coin_value = coin::value(payment_coin);
+        assert!(coin_value >= price, EInsufficientPayment);
+    }
+
+    public fun validate_if_item_listed(listed: bool) {
+        assert!(listed == true, EItemIsNotListed);
+    }
+
+    public fun validate_availability_item(quantity: u64, available: u64) {
+        assert!(available >= quantity, EInvalidQuantity);
+    }
+
     //==============================================================================================
     // Tests - DO NOT MODIFY
     //==============================================================================================
