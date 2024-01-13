@@ -220,7 +220,7 @@ module overmind::marketplace {
 	*/
 	public fun create_shop(recipient: address, ctx: &mut TxContext) {
         let (shop_owner_capability, shop) = new_shop(ctx);
-        
+
         let id_shop = object::uid_to_inner(&shop.id);
         let id_shop_owner_cap = object::uid_to_inner(&shop_owner_capability.id);
 
@@ -257,7 +257,21 @@ module overmind::marketplace {
         supply: u64, 
         category: u8
     ) {
+        validate_shop_owner(shop, shop_owner_cap);
+        validate_price_item(price);
+        validate_supply(supply);
         
+        let id = shop.item_count;
+        let item = new_item(id, title, description, url, price, supply, category);
+
+        vector::push_back(&mut shop.items, item);
+        shop.item_count = shop.item_count + 1;
+        
+        let item_added = ItemAdded {
+            shop_id: object::id(shop),
+            item: id
+        };
+        event::emit(item_added);
     }
 
     /*
@@ -339,10 +353,35 @@ module overmind::marketplace {
         (shop_owner_capability, shop)
     }
 
+    public fun new_item(id: u64, title: vector<u8>, description: vector<u8>, url: vector<u8>, price: u64, supply: u64, category: u8): Item {
+        Item {
+            id,
+            title: string::utf8(title),
+            description: string::utf8(description),
+            url: url::new_unsafe_from_bytes(url),
+            listed: true,
+            price,
+            total_supply: supply,
+            category,
+            available: supply
+        }
+    }
+
     //==============================================================================================
     // Validation functions - Add your validation functions here (if any)
     //==============================================================================================
 
+    public fun validate_shop_owner(shop: &Shop, shop_owner_cap: &ShopOwnerCapability) {
+        assert!(shop.shop_owner_cap == object::id(shop_owner_cap), ENotShopOwner);
+    }
+
+    public fun validate_price_item(price: u64) {
+        assert!(price != 0, EInvalidPrice);
+    }
+
+    public fun validate_supply(supply: u64) {
+        assert!(supply != 0, EInvalidSupply);
+    }
     //==============================================================================================
     // Tests - DO NOT MODIFY
     //==============================================================================================
