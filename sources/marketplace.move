@@ -219,7 +219,21 @@ module overmind::marketplace {
         @param ctx - The transaction context.
 	*/
 	public fun create_shop(recipient: address, ctx: &mut TxContext) {
-        let (shop_owner_capability, shop) = new_shop(ctx);
+        let shop_owner_cap_id = object::new(ctx);
+        let shop_id = object::new(ctx);
+
+        let shop = Shop {
+            id: shop_id,
+            shop_owner_cap: object::uid_to_inner(&shop_owner_cap_id),
+            balance: balance::zero<SUI>(),
+            items: vector::empty<Item>(),
+            item_count: 0
+        };
+
+        let shop_owner_capability = ShopOwnerCapability {
+            id: shop_owner_cap_id,
+            shop: object::uid_to_inner(&shop.id)
+        };
 
         let id_shop = object::uid_to_inner(&shop.id);
         let id_shop_owner_cap = object::uid_to_inner(&shop_owner_capability.id);
@@ -229,8 +243,8 @@ module overmind::marketplace {
             shop_owner_cap_id: id_shop_owner_cap,
         };
 
-        transfer::share_object(shop);
         transfer::transfer(shop_owner_capability, recipient);
+        transfer::share_object(shop);
         event::emit(shop_created);
 	}
 
@@ -376,32 +390,23 @@ module overmind::marketplace {
         recipient: address,
         ctx: &mut TxContext
     ) {
-        
+        validate_shop_owner(shop, shop_owner_cap);
+        validate_withdrawal_amount(&shop.balance, amount);
+
+        let c = coin::take(&mut shop.balance, amount, ctx);
+
+        transfer::public_transfer(c, recipient);
+
+        event::emit(ShopWithdrawal {
+            shop_id: object::id(shop),
+            amount,
+            recipient
+        });
     }
 
     //==============================================================================================
     // Helper functions - Add your helper functions here (if any)
     //==============================================================================================
-    public fun new_shop(ctx: &mut TxContext): (ShopOwnerCapability, Shop) {
-        let shop_owner_cap_id = object::new(ctx);
-        let shop_id = object::new(ctx);
-
-        let shop = Shop {
-            id: shop_id,
-            shop_owner_cap: object::uid_to_inner(&shop_owner_cap_id),
-            balance: balance::zero<SUI>(),
-            items: vector::empty<Item>(),
-            item_count: 0
-        };
-
-        let shop_owner_capability = ShopOwnerCapability {
-            id: shop_owner_cap_id,
-            shop: object::uid_to_inner(&shop.id)
-        };
-
-        (shop_owner_capability, shop)
-    }
-
     public fun new_item(id: u64, title: vector<u8>, description: vector<u8>, url: vector<u8>, price: u64, supply: u64, category: u8): Item {
         Item {
             id,
@@ -443,6 +448,10 @@ module overmind::marketplace {
 
     public fun validate_availability_item(quantity: u64, available: u64) {
         assert!(available >= quantity, EInvalidQuantity);
+    }
+
+    public fun validate_withdrawal_amount<T>(b: &Balance<T>, amount: u64) {
+        assert!(balance::value(b) >= amount, EInvalidWithdrawalAmount);
     }
 
     //==============================================================================================
