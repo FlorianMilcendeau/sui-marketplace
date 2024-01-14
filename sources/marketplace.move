@@ -425,32 +425,32 @@ module overmind::marketplace {
     // Validation functions - Add your validation functions here (if any)
     //==============================================================================================
 
-    public fun validate_shop_owner(shop: &Shop, shop_owner_cap: &ShopOwnerCapability) {
+    fun validate_shop_owner(shop: &Shop, shop_owner_cap: &ShopOwnerCapability) {
         assert!(shop.shop_owner_cap == object::id(shop_owner_cap), ENotShopOwner);
     }
 
-    public fun validate_price_item(price: u64) {
+    fun validate_price_item(price: u64) {
         assert!(price > 0, EInvalidPrice);
     }
 
-    public fun validate_supply(supply: u64) {
+    fun validate_supply(supply: u64) {
         assert!(supply > 0, EInvalidSupply);
     }
 
-    public fun validate_payment(price: u64, payment_coin: &coin::Coin<SUI>) {
+    fun validate_payment(price: u64, payment_coin: &coin::Coin<SUI>) {
         let coin_value = coin::value(payment_coin);
         assert!(coin_value >= price, EInsufficientPayment);
     }
 
-    public fun validate_if_item_listed(listed: bool) {
+    fun validate_if_item_listed(listed: bool) {
         assert!(listed == true, EItemIsNotListed);
     }
 
-    public fun validate_availability_item(quantity: u64, available: u64) {
+    fun validate_availability_item(quantity: u64, available: u64) {
         assert!(available >= quantity, EInvalidQuantity);
     }
 
-    public fun validate_withdrawal_amount<T>(b: &Balance<T>, amount: u64) {
+    fun validate_withdrawal_amount<T>(b: &Balance<T>, amount: u64) {
         assert!(balance::value(b) >= amount, EInvalidWithdrawalAmount);
     }
 
